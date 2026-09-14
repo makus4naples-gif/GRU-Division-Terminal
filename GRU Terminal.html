@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Объект-74 // Портной v2.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --term-color: #4af626;
+            --term-bg: #050a05;
+            --term-error: #ff3333;
+        }
+
+        body {
+            background-color: var(--term-bg);
+            color: var(--term-color);
+            font-family: 'VT323', monospace;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.25rem;
+        }
+
+        /* CRT Scanline Effect */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(18, 16, 16, 0) 50%,
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .terminal-glow {
+            text-shadow: 0 0 5px var(--term-color);
+        }
+
+        .terminal-glow-error {
+            text-shadow: 0 0 5px var(--term-error);
+            color: var(--term-error);
+        }
+
+        /* Custom Tooltip for Translations */
+        .ru-text {
+            position: relative;
+            display: inline-block;
+            cursor: crosshair;
+            border-bottom: 1px dotted rgba(74, 246, 38, 0.5);
+        }
+
+        .ru-text .tooltip {
+            visibility: hidden;
+            background-color: #000;
+            color: #fff;
+            text-align: left;
+            border: 1px solid var(--term-color);
+            padding: 10px;
+            position: absolute;
+            z-index: 60;
+            top: 120%;
+            left: 0;
+            white-space: pre-line; /* Allows line breaks in translation */
+            box-shadow: 0 0 10px var(--term-color);
+            font-size: 1.1rem;
+            width: max-content;
+            text-shadow: none;
+        }
+
+        .ru-text:hover .tooltip {
+            visibility: visible;
+        }
+
+        /* Input Styles */
+        input[type="text"], input[type="password"], select {
+            background-color: transparent;
+            color: var(--term-color);
+            border: 1px solid var(--term-color);
+            outline: none;
+            font-family: 'VT323', monospace;
+            font-size: 1.25rem;
+            padding: 0.25rem 0.5rem;
+            width: 100%;
+        }
+        
+        select option {
+            background-color: var(--term-bg);
+            color: var(--term-color);
+        }
+
+        input[type="text"]:focus, select:focus {
+            box-shadow: 0 0 8px var(--term-color);
+        }
+
+        /* Blinking Cursor */
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2rem;
+            background-color: var(--term-color);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Layouts */
+        #auth-screen, #generator-screen {
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Generator specific */
+        .panel-border {
+            border: 2px solid var(--term-color);
+            box-shadow: inset 0 0 10px rgba(74, 246, 38, 0.2);
+            padding: 1rem;
+        }
+
+        .nav-item {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-item:hover { background-color: rgba(74, 246, 38, 0.2); }
+        .nav-item.active { background-color: var(--term-color); color: var(--term-bg); }
+        .sub-nav { padding-left: 1rem; margin-top: 0.5rem; border-left: 1px dashed var(--term-color); }
+        
+        textarea.output-area {
+            background-color: rgba(0,0,0,0.8);
+            color: var(--term-color);
+            border: 1px solid var(--term-color);
+            width: 100%;
+            height: 300px;
+            font-family: 'VT323', monospace;
+            padding: 1rem;
+            resize: none;
+            font-size: 1.1rem;
+        }
+
+        button.btn {
+            background-color: transparent;
+            color: var(--term-color);
+            border: 1px solid var(--term-color);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-family: 'VT323', monospace;
+            font-size: 1.25rem;
+            text-transform: uppercase;
+        }
+        button.btn:hover {
+            background-color: var(--term-color);
+            color: var(--term-bg);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PHASE 1: AUTHENTICATION -->
+    <div id="auth-screen" class="terminal-glow flex justify-center items-center">
+        <div class="max-w-3xl w-full">
+            <div class="ru-text mb-6 inline-block">
+СИСТЕМА УПРАВЛЕНИЯ "ОБЬЕКТ-74" // ГРУ-П
+ВЕРСИЯ ПРАВИЛ: 3.12-K (ОДОБРЕНО МО СССР)
+                <span class="tooltip">SYSTEM CONTROL "OBJECT-74"; // GRU-P
+RULESET VERSION: 3.12-K (APPROVED BY USSR MOD)</span>
+            </div>
+
+            <br/>
+
+            <div class="ru-text mb-4 inline-block">
+АВТОРИЗАЦИЯ ОПЕРАТОРА...
+ВВЕДИТЕ ЛИЧНЫЙ НОМЕР И КЛЮЧ ДОСТУПА:
+                <span class="tooltip">OPERATOR AUTHENTICATION...
+ENTER PERSONAL NUMBER AND ACCESS KEY:</span>
+            </div>
+
+            <div class="flex items-center mb-4">
+                <span class="mr-2">&gt;</span>
+                <input type="password" id="access-key-input" class="w-64 border-none border-b border-green-500 focus:ring-0 bg-transparent" autofocus autocomplete="off">
+            </div>
+
+            <!-- Messages Container -->
+            <div id="auth-message" class="mt-8 hidden">
+                <!-- Success Message -->
+                <div id="auth-success" class="hidden">
+                    <div class="ru-text inline-block">
+ДОСТУП РАЗРЕШЕН. УРОВЕНЬ БЕЗОПАСНОСТИ: ТЕХНИЧЕСКИЙ [ДОПУСК 3]<br><br>
+ОПЕРАТОР #409-B.<br>
+ЖУРНАЛ НАБЛЮДЕНИЯ АНОМАЛИИ №14-K ОБНОВЛЕН.<br>
+ВНИМАНИЕ: ЛЮБАЯ ПОПЫТКА НЕСАНКЦИОНИРОВАННОГО КОПИРОВАНИЯ ВЕДЕТ<br>
+К СЛЕДСТВИЮ ТРИБУНАЛА.<br><br>
+ГОТОВ К ВВОДУ КОМАНДЫ.
+                        <span class="tooltip">ACCESS GRANTED. SECURITY LEVEL: TECHNICAL [CLEARANCE 3]
+
+OPERATOR #409-B.
+ANOMALY SURVEILLANCE LOG #14-K UPDATED.
+WARNING: ANY ATTEMPT AT UN-AUTHORIZED COPYING LEADS TO TRIBUNAL INVESTIGATION.
+
+READY FOR COMMAND INPUT.</span>
+                    </div>
+                    <div class="mt-4 animate-pulse">Инициализация интерфейса "Портной" <span class="cursor"></span></div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="auth-error" class="hidden terminal-glow-error">
+                    <div class="ru-text inline-block !border-b-red-500">
+ОШИБКА 0x09: НАРУШЕНИЕ ПРОТОКОЛА ВВОДА.<br>
+ОТКАЗ В ДОСТУПЕ.<br>
+ИНИЦИИРОВАНА ПРОВЕРКА ЛОКАЛЬНОГО ТЕРМИНАЛА.
+                        <span class="tooltip !border-red-500 !shadow-[0_0_10px_#ff3333]">ERROR 0x09: INPUT PROTOCOL VIOLATION.
+ACCESS DENIED.
+LOCAL TERMINAL AUDIT INITIATED.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PHASE 2: GENERATOR -->
+    <div id="generator-screen" class="hidden terminal-glow">
+        
+        <div class="mb-4 border-b border-green-500 pb-2 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-bold tracking-widest">ПОРТНОЙ v2.1</h1>
+                <p class="text-sm">ГРУ ОТДЕЛ "ПСИХОТРОНИКА" // ГЕНЕРАТОР МОРФОВ</p>
+            </div>
+            <div class="text-sm">СТАТУС: ОНЛАЙН // ДОПУСК 3</div>
+        </div>
+
+        <div class="flex flex-1 gap-6 h-full overflow-hidden">
+            <!-- Sidebar: Navigation -->
+            <div class="w-1/4 panel-border overflow-y-auto flex flex-col">
+                <h2 class="text-xl mb-4 text-center border-b border-green-500 pb-1">ДИРЕКТОРАТЫ</h2>
+                
+                <!-- 1st Chief Directorate -->
+                <div class="mb-4">
+                    <div class="nav-item p-1" onclick="toggleSubNav('sub-1st')">[+] 1st Chief Directorate</div>
+                    <div id="sub-1st" class="sub-nav hidden">
+                        <div class="nav-item p-1" onclick="toggleSubNav('sub-s')">-> Directorate "S" Shpionazh [+]</div>
+                        <div id="sub-s" class="sub-nav hidden">
+                            <div class="nav-item p-1 text-sm" id="btn-spy-sd" onclick="selectSpetsgruppa('spy_sd')"> &nbsp;&nbsp;--> Foundation Security Dept</div>
+                            <div class="nav-item p-1 text-sm" id="btn-spy-janitor" onclick="selectSpetsgruppa('spy_janitor')"> &nbsp;&nbsp;--> Foundation Janitorial</div>
+                            <div class="nav-item p-1 text-sm" id="btn-spy-tribunal" onclick="selectSpetsgruppa('spy_tribunal')"> &nbsp;&nbsp;--> Foundation Internal Tribunal</div>
+                            <div class="nav-item p-1 text-sm" id="btn-spy-et" onclick="selectSpetsgruppa('spy_et')"> &nbsp;&nbsp;--> Foundation E&T</div>
+                            <div class="nav-item p-1 text-sm" id="btn-spy-ethics" onclick="selectSpetsgruppa('spy_ethics')"> &nbsp;&nbsp;--> Foundation Ethics Commitee</div>
+                        </div>
+                        <div class="nav-item p-1" id="btn-dir-k" onclick="selectSpetsgruppa('dir_k')">-> Directorate "K" Kontrrazvedka</div>
+                        <div class="nav-item p-1" id="btn-service-o" onclick="selectSpetsgruppa('service_o')">-> Service "O" Okhrana</div>
+                    </div>
+                </div>
+
+                <!-- 2nd Chief Directorate -->
+                <div class="mb-4">
+                    <div class="nav-item p-1" onclick="toggleSubNav('sub-2nd')">[+] 2nd Chief Directorate</div>
+                    <div id="sub-2nd" class="sub-nav">
+                        <div class="nav-item p-1" id="btn-alfa" onclick="selectSpetsgruppa('alfa')">-> Spetsgruppa "A" Alfa</div>
+                        <div class="nav-item p-1" id="btn-vympel" onclick="selectSpetsgruppa('vympel')">-> Spetsgruppa "V" Vympel</div>
+                        <div class="nav-item p-1" id="btn-monolith" onclick="selectSpetsgruppa('monolith')">-> Spetsgruppa "M" Monolith</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Panel: Inputs and Output -->
+            <div class="w-3/4 flex flex-col gap-4">
+                
+                <!-- Overlay when no squad is selected -->
+                <div id="selection-overlay" class="panel-border flex-1 flex items-center justify-center text-xl animate-pulse">
+                    ОЖИДАНИЕ ВЫБОРА ПОДРАЗДЕЛЕНИЯ...
+                </div>
+
+                <!-- Form Area -->
+                <div id="form-area" class="panel-border hidden flex-col h-full overflow-y-auto">
+                    <h2 id="active-squad-title" class="text-2xl mb-4 font-bold border-b border-green-500 pb-1 uppercase"></h2>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        
+                        <!-- Username -->
+                        <div>
+                            <label class="block mb-1">ROBLOX USERNAME:</label>
+                            <input type="text" id="inp-username" placeholder="e.g. Player123" oninput="generateCommand()">
+                        </div>
+
+                        <!-- Skin -->
+                        <div>
+                            <label class="block mb-1">SKINTONE:</label>
+                            <select id="inp-skin" onchange="generateCommand()">
+                                <option value="Tan">Tan</option>
+                                <option value="Lightskin">Lightskin</option>
+                                <option value="Brown">Brown</option>
+                                <option value="Dark">Dark</option>
+                            </select>
+                        </div>
+
+                        <!-- Codename -->
+                        <div>
+                            <label class="block mb-1">CODENAME:</label>
+                            <input type="text" id="inp-codename" placeholder="e.g. GHOST" oninput="generateCommand()">
+                        </div>
+
+                        <!-- Rank Category & Specific Rank -->
+                        <div class="flex gap-2">
+                            <div class="w-1/2">
+                                <label class="block mb-1">RANK CAT:</label>
+                                <select id="inp-rank-cat" onchange="updateRankOptions(); generateCommand()">
+                                    <option value="High Command">High Command</option>
+                                    <option value="High Rank">High Rank</option>
+                                    <option value="Medium Rank">Medium Rank</option>
+                                    <option value="Low Rank">Low Rank</option>
+                                </select>
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block mb-1">RANK:</label>
+                                <select id="inp-rank" onchange="generateCommand()">
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Health / Site -->
+                        <div>
+                            <label class="block mb-1">HEALTH / SITE:</label>
+                            <select id="inp-health" onchange="generateCommand()">
+                                <option value="Site 80 LR">Site 80 LR (115)</option>
+                                <option value="Site 80 MR">Site 80 MR (125)</option>
+                                <option value="Site 80 HR">Site 80 HR (135)</option>
+                                <option value="Site 80 HC">Site 80 HC (145)</option>
+                                <option value="Site 80 Juggernaut">Site 80 Juggernaut (300)</option>
+                            </select>
+                        </div>
+
+                        <!-- Weapons -->
+                        <div class="col-span-2 grid grid-cols-3 gap-2 border border-green-800 p-2">
+                            <div>
+                                <label class="block mb-1 text-sm text-green-600">PRIMARY:</label>
+                                <select id="inp-primary" onchange="generateCommand()">
+                                    <option value="KV-12">KV-12</option>
+                                    <option value="ARX-200">ARX-200</option>
+                                    <option value="AK-47">AK-47</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block mb-1 text-sm text-green-600">SECONDARY:</label>
+                                <select id="inp-secondary" onchange="generateCommand()">
+                                    <option value="AKS-74U">AKS-74U</option>
+                                    <option value="SMG9">SMG9</option>
+                                    <option value="SMG25">SMG25</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block mb-1 text-sm text-green-600">SIDEARM:</label>
+                                <select id="inp-sidearm" onchange="generateCommand()">
+                                    <option value="Pistol">Pistol</option>
+                                    <option value="M9">M9</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Output Area -->
+                    <div class="flex-1 flex flex-col">
+                        <div class="flex justify-between items-end mb-2">
+                            <label>СГЕНЕРИРОВАННЫЙ КОД (OUTPUT):</label>
+                            <button class="btn text-sm py-1" onclick="copyToClipboard()">[ COPY ]</button>
+                        </div>
+                        <textarea id="output-command" class="output-area flex-1" readonly></textarea>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STRUCTURES ---
+
+        const templates = {
+            "alfa": `run 
+& unpermall \`USER\`
+& clearstartergear \`USER\` 
+& permmorph \`USER\` remove 
+
+& permhat \`USER\` 32278814 117319908743445 127390571907614 17172791115 139553882755586 99887724990300 90714422557988 76924489539107 122724500818120 120479717950087 108004447519700 14567039413 
+& permshirt \`USER\` 17671332594 17671328807
+& permskin \`USER\` \`Skintone\` 
+& newnvg \`USER\` perm invg color light blue highlight 3
+& permntag \`USER\` <font face="Jura"><stroke color="#0d0d0d"> 〈 ГРУ ‣ ‘\`Codename\`’ 〉</stroke></font>
+& permrtag \`USER\` <font face="Jura" weight="heavy"><stroke  color = "#0d0d0d" thickness = ".5">〈 GRU Division︰ "Psychotronics" 〉 <br /> <b>〈 Status︰[HGoI]┇\`Rank\`┇<u>SPETSGRUPPA︰"Альфа"</u>〉</b></stroke></font>
+& permcntag \`USER\` 95 10 11 
+& permcrtag \`USER\` 148 13 15 
+& permmaxhealth \`USER\` \`Health\`
+& startergear \`USER\` \`Primary\`,\`Secondary\`,\`Sidearm\`
+& startergear \`USER\` medkit black 5
+& heal \`USER\``,
+
+            "vympel": `run 
+& unpermall \`USER\` 
+& clearstartergear \`USER\` 
+& permmorph \`USER\` remove 
+
+& permhat \`USER\` 4773873546 117319908743445 17172853862 126277026526742 110051118431109 106136563218538 91729201488340 137149689173920 93734777302762 74175503841787 99118821903454 106642966307602 78222453804725 73889216389756 ivest 
+& permshirt \`USER\`  72788489932508  87152863073478  
+& permskin \`USER\` \`Skintone\` 
+& newnvg \`USER\` perm jnvg color 180 200 225 scrambler 2 highlight 3 
+& permntag \`USER\` <font face="Jura"><stroke color="#0d0d0d"> 〈 ГРУ ‣ ‘\`Codename\`’ 〉</stroke></font>
+& permrtag \`USER\` <font face="Jura" weight="heavy"><stroke  color = "#0d0d0d" thickness = ".5">〈 GRU Division︰ "Psychotronics" 〉 <br /> <b>〈 Status︰[HGoI]┇\`Rank\`┇<u>SPETSGRUPPA︰"Вымпел"</u>〉</b></stroke></font>
+& permcntag \`USER\` 95 10 11 
+& permcrtag \`USER\` 148 13 15 
+& permmaxhealth \`USER\` \`Health\`
+& startergear \`USER\` \`Primary\`,\`Secondary\`,\`Sidearm\`
+& startergear \`USER\` medkit black 5
+& heal \`USER\``,
+
+            "monolith": `run 
+& unpermall \`USER\` 
+& clearstartergear  \`USER\` 
+& permmorph  \`USER\` remove 
+
+& permhat  \`USER\` 14815456378 15183657331 15849654262 88475074070407 15441145672 115812732602779 15804384827  ivest 
+& permshirt  \`USER\` 17642471800 17236583661
+& newnvg  \`USER\` iqnvg color 255 255 255 scrambler 2 
+& permskin  \`USER\` white
+& permntag  \`USER\` <font face="SciFi">『 STΛ-v.1-O4 ‣ ‘Следопыт’ 』</font>
+& permrtag  \`USER\` <font face="Jura" weight="heavy"><stroke  color = "#0d0d0d" thickness = ".5">〈 GRU Division︰ "Psychotronics" 〉 <br /> <b>〈 Status︰[HGoI]┇BWC︰[ON]┇<u>SPETSGRUPPA︰"Моноліт"</u>〉</b></stroke></font>
+& permcntag  \`USER\` 180 180 180
+& permcrtag  \`USER\` 25 55 90
+& permmaxhealth  \`USER\` \`Health\`
+& startergear  \`USER\` \`Primary\`,\`Secondary\`,\`Sidearm\`
+& startergear  \`USER\` Medkit black 5
+& heal  \`USER\``,
+
+            "spy_sd": `run 
+& unpermall \`USER\`  
+& clearstartergear \`USER\`  
+& permmorph \`USER\`  remove 
+
+& permhat \`USER\`  17537885732 17538312477 18291294580  118620345064533 18182556294 118130965973100 133255085370107 96330760094289 18406147686 117694264830848 99118821903454 
+& permshirt \`USER\`  16021495773 16021503480 
+& permskin \`USER\`  \`Skintone\`
+& permntag \`USER\`  <font face="Sarpanch">『 SD ‣ ‘\`Codename\`’ 』</font>
+& permrtag \`USER\`  <font face="GothamMedium"><b>〈 Security Department┇<i>GRU-P Spy</i>┇Cpl. 〉<br/> 〈 SC-[2]┇BC : On┇Security Team︰“KILO” 〉</b></font> 
+& permcntag \`USER\`  159 161 172
+& permcrtag \`USER\`  159 161 172
+& permmaxhealth \`USER\`  \`Health\`
+& startergear \`USER\`  M4,SMG25,\`Sidearm\`
+& startergear \`USER\`  Medkit black 5
+& heal \`USER\``,
+
+            "spy_janitor": `run 
+& unpermall \`USER\`   
+& clearstartergear \`USER\`   
+& permmorph \`USER\`   remove 
+& removetools \`USER\`  
+
+& permhat \`USER\`   7611015444 74498838771791 18179482918 14076251178 14076240973
+& permshirt \`USER\`   80027839554220  76091269397049
+& permskin \`USER\`   \`Skintone\`
+& permntag \`USER\`   <font face="Sarpanch">『  John E. Doe 』</font>
+& permrtag \`USER\`   <font face="GothamMedium"><b>〈 Foundation Janitorial Service 〉<br/> 〈 SC-[0]┇<i>GRU-P Spy</i>┇Class-[E] Personnel 〉</b></font> 
+& permcntag \`USER\`   159 161 172
+& permcrtag \`USER\`   159 161 172
+& permmaxhealth \`USER\`   \`Health\`
+& startergear \`USER\`   Broom,L0,\`Sidearm\`,radio
+& heal \`USER\``,
+
+            "spy_tribunal": `run 
+& unpermall \`USER\`   
+& clearstartergear \`USER\`   
+& permmorph \`USER\`   remove 
+& removetools \`USER\`  
+
+& permhat \`USER\`   124793963073071 135229359270909 10782139095 16246325644 127351876144250
+& permshirt \`USER\`   94400301076837 99711283982446
+& permface \`USER\`   595900
+& permskin \`USER\`   \`Skintone\`
+& permntag \`USER\`   <font face="Sarpanch">『  <i>John D. Smith</i> 』</font>
+& permrtag \`USER\`   <font face="GothamMedium"><b>〈 Foundation Internal Tribunal Department  〉<br/> 〈 SC-[2]┇<i>GRU-P Spy</i>┇Court Clerk 〉</b></font> 
+& permcntag \`USER\`   159 161 172
+& permcrtag \`USER\`   159 161 172
+& permmaxhealth \`USER\`   \`Health\`
+& startergear \`USER\`   Pistol,radio,L2,clipboard
+& startergear \`USER\`   medkit black 5
+& heal \`USER\``,
+
+            "spy_et": `run 
+& unpermall \`USER\` 
+& clearstartergear \`USER\` 
+& permmorph \`USER\` remove 
+& removetools \`USER\`
+
+& permhat \`USER\` 14617421935 14449252277 118122971099393 14449406347 90006639886631 &
+& permshirt \`USER\` 125307185777509  128368929248661
+& permskin \`USER\` \`Skintone\`
+& permntag \`USER\` <font face="Sarpanch">『  <i>Jimmy J. Carter</i> 』</font>
+& permrtag \`USER\` <font face="GothamMedium"><b>〈 Foundation Engineering & Technical  〉<br/> 〈 SC-[2]┇<i>GRU-P Spy</i>┇Maintenance Worker 〉</b></font> 
+& permcntag \`USER\` 159 161 172
+& permcrtag \`USER\` orange
+& permmaxhealth \`USER\` \`Health\`
+& startergear \`USER\` Pistol,radio,L2,clipboard,wrench
+& heal \`USER\``,
+
+            "spy_ethics": `run
+& unpermall \`USER\`
+& clearstartergear \`USER\`
+& permmorph \`USER\` remove 
+& removetools \`USER\`
+
+& permhat \`USER\` 14558472275 13631218253 14700659587
+& permshirt \`USER\` 123661809969333 113801187138368
+& permface \`USER\` 595699
+& permskin \`USER\` \`Skintone\`
+& permntag \`USER\` <font face="Sarpanch">『  <i>Harold F. Callahan</i> 』</font>
+& permrtag \`USER\` <font face="GothamMedium"><b>〈 Foundation Ethics Commitee  〉<br/> 〈 SC-[2]┇<i>GRU-P Spy</i>┇Intern 〉</b></font> 
+& permcntag \`USER\` 159 161 172
+& permcrtag \`USER\` 0 100 0
+& permmaxhealth \`USER\` \`Health\`
+& startergear \`USER\` Pistol,radio,L2,clipboard,spray
+& heal \`USER\``,
+
+            "dir_k": `run 
+& unpermall \`USER\` 
+& clearstartergear \`USER\` 
+& permmorph \`USER\` remove 
+
+& permhat \`USER\` 124253366535481 84738378822492
+& permshirt \`USER\` 8748472999 8748476792 
+& permntag \`USER\` <font face="Jura"><stroke color="#0d0d0d"> 〈 ГРУ ‣ ‘\`Codename\`’ 〉</stroke></font>
+& permrtag \`USER\`  <font face="Jura" weight="heavy"><stroke  color = "#0d0d0d" thickness = ".5">〈 GRU Division︰ "Psychotronics" 〉 <br /> <b>〈 Status︰[HGoI]┇\`Rank\`┇<u>Directorate "K"︰"Контрразведка"</u>〉</b></stroke></font>
+& permcntag \`USER\` 95 10 11 
+& permcrtag \`USER\` 148 13 15  
+& permmaxhealth \`USER\` \`Health\`
+& startergear \`USER\` \`Secondary\`,\`Sidearm\`
+& startergear \`USER\` medkit black 5
+& heal \`USER\``,
+
+            "service_o": `run 
+& unpermall \`USER\`  
+& clearstartergear \`USER\`  
+& permmorph \`USER\`  remove 
+
+& permhat \`USER\`  32278814 133548613207116 81506996284386 104570218591515 71275621302725 128804758620376 92259957388280 132105235960950 127575108854890 105285640480787 18406147686 
+& permshirt \`USER\`  15448498299 15448512339
+& permskin \`USER\` \`Skintone\` 
+& permnewnvg \`USER\` perm invg color light blue highlight 3
+& permntag \`USER\` <font face="Jura"><stroke color="#0d0d0d"> 〈 ГРУ ‣ ‘\`Codename\`’ 〉</stroke></font>
+& permrtag \`USER\`   <font face="Jura" weight="heavy"><stroke  color = "#0d0d0d" thickness = ".5">〈 GRU Division︰ "Psychotronics" 〉 <br /> <b>〈 Status︰[HGoI]┇\`Rank\`┇<u>Service "O"︰"Охрана"</u>〉</b></stroke></font>
+& permcntag \`USER\` 95 10 11 
+& permcrtag \`USER\` 148 13 15 
+& permmaxhealth \`USER\` \`Health\`
+& startergear \`USER\` \`Primary\`,\`Secondary\`,\`Sidearm\`
+& startergear \`USER\` medkit black 5
+& heal \`USER\``
+        };
+
+        const rankMappings = {
+            "High Command": {
+                "General-mayor": "HC› Gen. May.",
+                "Polkovnik": "HC› Pol.",
+                "Podpolkovnik": "HC› Ppk."
+            },
+            "High Rank": {
+                "Mayor": "HR› May.",
+                "Kapitan": "HR› Kap.",
+                "Starshiy Leytenant": "HR› St. Lt.",
+                "Leytenant": "HR› Leyt."
+            },
+            "Medium Rank": {
+                "Praporshchik": "MR› Prap.",
+                "Starshina": "MR› Str.",
+                "Starshiy Serzhant": "MR› St. Szt.",
+                "Serzhant": "MR› Szt.",
+                "Mladshiy Serzhant": "MR› Ml. Szt."
+            },
+            "Low Rank": {
+                "Efreytor": "LR› Efr.",
+                "Spetsialist": "LR› Spt.",
+                "Starshiy Ryadovoy": "LR› St. Ryd.",
+                "Ryadovoy": "LR› Ryd.",
+                "Kursant": "LR› Ml. Knt."
+            }
+        };
+
+        const skinMappings = {
+            "Tan": "226 188 156",
+            "Lightskin": "210 161 113",
+            "Brown": "171 115 68",
+            "Dark": "100 61 40"
+        };
+
+        const healthMappings = {
+            "Site 80 LR": "115",
+            "Site 80 MR": "125",
+            "Site 80 HR": "135",
+            "Site 80 HC": "145",
+            "Site 80 Juggernaut": "300"
+        };
+
+        let currentSpetsgruppa = null;
+
+        // --- AUTHENTICATION LOGIC ---
+        const accessInput = document.getElementById('access-key-input');
+        const authMsgBox = document.getElementById('auth-message');
+        const authSuccess = document.getElementById('auth-success');
+        const authError = document.getElementById('auth-error');
+
+        accessInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const val = this.value;
+                this.value = ''; // clear
+                this.disabled = true;
+
+                authMsgBox.classList.remove('hidden');
+
+                if (val === 'Motherland') {
+                    // Success
+                    authError.classList.add('hidden');
+                    authSuccess.classList.remove('hidden');
+                    
+                    // Transition after delay
+                    setTimeout(() => {
+                        document.getElementById('auth-screen').classList.add('hidden');
+                        document.getElementById('generator-screen').classList.remove('hidden');
+                        initGenerator();
+                    }, 3500);
+                } else {
+                    // Error
+                    authSuccess.classList.add('hidden');
+                    authError.classList.remove('hidden');
+                    
+                    // Reset input after delay
+                    setTimeout(() => {
+                        authMsgBox.classList.add('hidden');
+                        this.disabled = false;
+                        this.focus();
+                    }, 2500);
+                }
+            }
+        });
+
+        // --- GENERATOR LOGIC ---
+        function initGenerator() {
+            updateRankOptions(); // populate initial rank list
+        }
+
+        function toggleSubNav(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+
+        function selectSpetsgruppa(squad) {
+            currentSpetsgruppa = squad;
+            
+            // UI updates
+            document.querySelectorAll('.sub-nav .nav-item').forEach(el => el.classList.remove('active'));
+            const btn = document.getElementById(`btn-${squad.replace(/_/g, '-')}`);
+            if (btn) btn.classList.add('active');
+            
+            document.getElementById('selection-overlay').classList.add('hidden');
+            document.getElementById('form-area').classList.remove('hidden');
+            document.getElementById('form-area').classList.add('flex');
+
+            const titles = {
+                'alfa': 'Spetsgruppa "A" Alfa',
+                'vympel': 'Spetsgruppa "V" Vympel',
+                'monolith': 'Spetsgruppa "M" Monolith',
+                'spy_sd': 'Foundation Security Department Spy',
+                'spy_janitor': 'Foundation Janitorial Service Spy',
+                'spy_tribunal': 'Foundation Internal Tribunal Dept Spy',
+                'spy_et': 'Foundation E&T Spy',
+                'spy_ethics': 'Foundation Ethics Committee Spy',
+                'dir_k': 'Directorate "K" Kontrrazvedka',
+                'service_o': 'Service "O" Okhrana'
+            };
+
+            document.getElementById('active-squad-title').innerText = titles[squad] || squad;
+
+            generateCommand();
+        }
+
+        function updateRankOptions() {
+            const cat = document.getElementById('inp-rank-cat').value;
+            const rankSelect = document.getElementById('inp-rank');
+            rankSelect.innerHTML = ''; // clear
+
+            const ranks = rankMappings[cat];
+            for (let rankName in ranks) {
+                let opt = document.createElement('option');
+                opt.value = ranks[rankName]; // Store the mapped short value directly
+                opt.text = rankName;
+                rankSelect.appendChild(opt);
+            }
+        }
+
+        // The core replacement function
+        function generateCommand() {
+            if (!currentSpetsgruppa) return;
+
+            let template = templates[currentSpetsgruppa];
+
+            // Get values
+            const user = document.getElementById('inp-username').value.trim() || 'USER';
+            const skinCode = skinMappings[document.getElementById('inp-skin').value];
+            const codename = document.getElementById('inp-codename').value.trim() || 'CODENAME';
+            const rank = document.getElementById('inp-rank').value || 'RANK';
+            const health = healthMappings[document.getElementById('inp-health').value];
+            
+            const primary = document.getElementById('inp-primary').value;
+            const secondary = document.getElementById('inp-secondary').value;
+            const sidearm = document.getElementById('inp-sidearm').value;
+
+            // Apply Replacements using Regex to catch all instances
+            // Note: In template strings, placeholders are surrounded by backticks (e.g. `USER`). 
+            // In the raw text template we defined above, they are literally \`USER\` to avoid JS evaluation.
+            
+            template = template.replace(/`USER`/g, user);
+            template = template.replace(/`Skintone`/g, skinCode);
+            template = template.replace(/`Codename`/g, codename);
+            template = template.replace(/`Rank`/g, rank);
+            template = template.replace(/`Health`/g, health);
+            template = template.replace(/`Primary`/g, primary);
+            template = template.replace(/`Secondary`/g, secondary);
+            template = template.replace(/`Sidearm`/g, sidearm);
+
+            document.getElementById('output-command').value = template;
+        }
+
+        function copyToClipboard() {
+            const textArea = document.getElementById('output-command');
+            textArea.select();
+            textArea.setSelectionRange(0, 99999); // For mobile devices
+            try {
+                document.execCommand('copy');
+                // Temporary visual feedback
+                const btn = document.querySelector('button.btn');
+                const origText = btn.innerText;
+                btn.innerText = '[ COPIED ]';
+                btn.style.backgroundColor = 'var(--term-color)';
+                btn.style.color = 'var(--term-bg)';
+                setTimeout(() => {
+                    btn.innerText = origText;
+                    btn.style.backgroundColor = 'transparent';
+                    btn.style.color = 'var(--term-color)';
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+        }
+
+    </script>
+</body>
+</html>
